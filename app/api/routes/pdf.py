@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File
-from app.services.pdf_service import merge_pdfs, extract_text_from_pdf
+from app.services.pdf_service import merge_pdfs, extract_text_from_pdf, split_pdf
 from typing import Annotated
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -23,3 +23,14 @@ async def extract_text_from_pdf_file(file: Annotated[UploadFile, File()]):
     extracted_text = await extract_text_from_pdf(file)
 
     return {"status": "success", "extracted_text": extracted_text}
+
+
+@router.post("/split")
+async def split_pdf_file(file: Annotated[UploadFile, File()]):
+    split_pdfs = await split_pdf(file)
+
+    return StreamingResponse(
+        content=BytesIO(split_pdfs),
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=split_pdfs.zip"},
+    )
