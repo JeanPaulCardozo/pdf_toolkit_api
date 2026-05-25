@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File
-from app.services.pdf_service import merge_pdfs
+from app.services.pdf_service import merge_pdfs, extract_text_from_pdf
 from typing import Annotated
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -16,3 +16,10 @@ async def merge_pdf_files(files: Annotated[list[UploadFile], File()]):
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=merged.pdf"},
     )
+
+
+@router.post("/extract-text")
+async def extract_text_from_pdf_file(file: Annotated[UploadFile, File()]):
+    extracted_text = await extract_text_from_pdf(file)
+
+    return {"status": "success", "extracted_text": extracted_text}
