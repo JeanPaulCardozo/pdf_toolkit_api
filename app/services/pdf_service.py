@@ -34,7 +34,7 @@ async def _get_pdf_reader(file: UploadFile) -> PdfReader:
     return reader
 
 
-async def merge_pdfs(files: list[UploadFile]) -> bytes:
+async def merge_pdfs(files: list[UploadFile]) -> BytesIO:
     writer = PdfWriter()
 
     for file in files:
@@ -52,7 +52,7 @@ async def merge_pdfs(files: list[UploadFile]) -> bytes:
 
     logger.info("PDF merge completed successfully")
 
-    return output.getvalue()
+    return output
 
 
 async def extract_text_from_pdf(file: UploadFile) -> str:
@@ -70,7 +70,7 @@ async def extract_text_from_pdf(file: UploadFile) -> str:
     return extracted_text
 
 
-async def split_pdf(file: UploadFile) -> bytes:
+async def split_pdf(file: UploadFile) -> BytesIO:
     logger.info(f"Processing file: {file.filename}")
 
     reader = await _get_pdf_reader(file)
@@ -89,5 +89,6 @@ async def split_pdf(file: UploadFile) -> bytes:
             zip_file.writestr(f"page_{index + 1}.pdf", pdf_buffer.getvalue())
 
     zip_buffer.seek(0)
+    logger.info(f"PDF split completed successfully for file: {file.filename}")
 
-    return zip_buffer.getvalue()
+    return zip_buffer
