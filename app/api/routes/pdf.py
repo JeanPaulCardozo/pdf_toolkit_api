@@ -1,5 +1,10 @@
 from fastapi import APIRouter, UploadFile, File
-from app.services.pdf_service import merge_pdfs, extract_text_from_pdf, split_pdf
+from app.services.pdf_service import (
+    merge_pdfs,
+    extract_text_from_pdf,
+    split_pdf,
+    convert_pdf_to_word,
+)
 from typing import Annotated
 from fastapi.responses import Response
 from io import BytesIO
@@ -33,4 +38,15 @@ async def split_pdf_file(file: Annotated[UploadFile, File()]):
         content=split_pdfs.getvalue(),
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=split_pdfs.zip"},
+    )
+
+
+@router.post("/convert-to-word")
+async def convert_pdf_to_word_file(file: Annotated[UploadFile, File()]):
+    word_file = await convert_pdf_to_word(file)
+
+    return Response(
+        content=word_file.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": "attachment; filename=converted.docx"},
     )

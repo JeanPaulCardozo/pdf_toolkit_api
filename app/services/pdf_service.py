@@ -1,9 +1,12 @@
 from io import BytesIO
 
+import docx
 from fastapi import UploadFile, HTTPException
 
 from pypdf import PdfWriter, PdfReader
 from pypdf.errors import PdfReadError
+
+from docx import Document
 
 from zipfile import ZipFile
 
@@ -92,3 +95,21 @@ async def split_pdf(file: UploadFile) -> BytesIO:
     logger.info(f"PDF split completed successfully for file: {file.filename}")
 
     return zip_buffer
+
+
+async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
+
+    logger.info("Starting PDF to Word conversion")
+
+    extracted_text = await extract_text_from_pdf(file)
+
+    document = Document()
+    document.add_paragraph(extracted_text)
+
+    word_buffer = BytesIO()
+
+    document.save(word_buffer)
+    word_buffer.seek(0)
+
+    logger.info("PDF to Word conversion completed successfully")
+    return word_buffer
