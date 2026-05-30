@@ -128,4 +128,3 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     logger.info("HTML to PDF conversion completed successfully")
     return pdf_buffer
-        

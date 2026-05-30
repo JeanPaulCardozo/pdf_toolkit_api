@@ -8,7 +8,6 @@ from app.services.pdf_service import (
 )
 from typing import Annotated
 from fastapi.responses import Response
-from io import BytesIO
 
 router = APIRouter(prefix="/pdf", tags=["PDF"])
 
