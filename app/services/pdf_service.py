@@ -1,10 +1,11 @@
 from io import BytesIO
 
-import docx
 from fastapi import UploadFile, HTTPException
 
 from pypdf import PdfWriter, PdfReader
 from pypdf.errors import PdfReadError
+
+from weasyprint import HTML
 
 from docx import Document
 
@@ -113,3 +114,18 @@ async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
 
     logger.info("PDF to Word conversion completed successfully")
     return word_buffer
+
+
+async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
+    logger.info("Starting HTML to PDF conversion")
+
+    html_content = (await file.read()).decode("utf-8")
+
+    pdf_buffer = BytesIO()
+
+    HTML(string=html_content).write_pdf(pdf_buffer)
+    pdf_buffer.seek(0)
+
+    logger.info("HTML to PDF conversion completed successfully")
+    return pdf_buffer
+        

@@ -4,6 +4,7 @@ from app.services.pdf_service import (
     extract_text_from_pdf,
     split_pdf,
     convert_pdf_to_word,
+    convert_html_to_pdf,
 )
 from typing import Annotated
 from fastapi.responses import Response
@@ -49,4 +50,18 @@ async def convert_pdf_to_word_file(file: Annotated[UploadFile, File()]):
         content=word_file.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=converted.docx"},
+    )
+
+
+@router.post("/convert-html-to-pdf")
+async def convert_html_to_pdf_file(file: UploadFile):
+
+    pdf_file = await convert_html_to_pdf(file)
+
+    return Response(
+        content=pdf_file.getvalue(),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": "attachment; filename=html_to_pdf_converted.pdf"
+        },
     )
