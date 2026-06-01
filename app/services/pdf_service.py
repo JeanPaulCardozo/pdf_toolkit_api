@@ -7,7 +7,9 @@ from pypdf.errors import PdfReadError
 
 from weasyprint import HTML
 
-from docx import Document
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from pdf2docx import Converter
 
 from zipfile import ZipFile
 
@@ -18,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def _get_pdf_reader(file: UploadFile) -> PdfReader:
+async def _get_pdf_reader(file: UploadFile) -> tuple[PdfReader, bytes]:
     if file.content_type != "application/pdf":
         logger.error(
             f"Unsupported file type: {file.content_type} for file {file.filename}"
@@ -37,7 +39,7 @@ async def _get_pdf_reader(file: UploadFile) -> PdfReader:
             status_code=400, detail=f"Invalid or corrupted PDF :{file.filename}"
         )
 
-    return reader
+    return reader, pdf_bytes
 
 
 async def merge_pdfs(files: list[UploadFile]) -> BytesIO:
@@ -46,7 +48,7 @@ async def merge_pdfs(files: list[UploadFile]) -> BytesIO:
     for file in files:
         logger.info(f"Processing file: {file.filename}")
 
-        reader = await _get_pdf_reader(file)
+        reader, _ = await _get_pdf_reader(file)
 
         for page in reader.pages:
             writer.add_page(page)
@@ -64,7 +66,7 @@ async def merge_pdfs(files: list[UploadFile]) -> BytesIO:
 async def extract_text_from_pdf(file: UploadFile) -> str:
     logger.info(f"Processing file: {file.filename}")
 
-    reader = await _get_pdf_reader(file)
+    reader, _ = await _get_pdf_reader(file)
 
     extracted_text = ""
 
@@ -79,7 +81,7 @@ async def extract_text_from_pdf(file: UploadFile) -> str:
 async def split_pdf(file: UploadFile) -> BytesIO:
     logger.info(f"Processing file: {file.filename}")
 
-    reader = await _get_pdf_reader(file)
+    reader, _ = await _get_pdf_reader(file)
 
     zip_buffer = BytesIO()
 
@@ -104,18 +106,29 @@ async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
 
     logger.info("Starting PDF to Word conversion")
 
-    extracted_text = await extract_text_from_pdf(file)
+    _, pdf_bytes = await _get_pdf_reader(file)
 
-    document = Document()
-    document.add_paragraph(extracted_text)
+    try:
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
 
-    word_buffer = BytesIO()
+            pdf_path = temp_path / "input.pdf"
+            docx_path = temp_path / "output.docx"
 
-    document.save(word_buffer)
-    word_buffer.seek(0)
+            pdf_path.write_bytes(pdf_bytes)
 
-    logger.info("PDF to Word conversion completed successfully")
-    return word_buffer
+            converter = Converter(str(pdf_path))
+            converter.convert(str(docx_path))
+            converter.close()
+
+            word_buffer = BytesIO(docx_path.read_bytes())
+            word_buffer.seek(0)
+
+        logger.info("PDF to Word conversion completed successfully")
+        return word_buffer
+    except Exception as error:
+        logger.error(f"PDF to Word conversion failed: {error}")
+        raise HTTPException(status_code=400, detail=error)
 
 
 async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
