@@ -11,6 +11,8 @@ from docx import Document
 
 from zipfile import ZipFile
 
+from bs4 import BeautifulSoup
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -119,7 +121,31 @@ async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
 async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
     logger.info("Starting HTML to PDF conversion")
 
-    html_content = (await file.read()).decode("utf-8")
+    if file.content_type != "text/html":
+        logger.error(
+            f"Unsupported file type: {file.content_type} for file {file.filename}"
+        )
+        raise HTTPException(status_code=400, detail="Only HTML files are allowed")
+
+    file_content = await file.read()
+
+    try:
+        html_content = file_content.decode("utf-8")
+    except:
+        logger.error(f"Invalid text encoding for file: {file.filename}")
+        raise HTTPException(
+            status_code=400, detail="The uploaded file content is not valid HTML"
+        )
+
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    is_valid_html = soup.find("html") is not None and soup.find("body") is not None
+
+    if not is_valid_html:
+        logger.error(f"Invalid HTML content detected: {file.filename}")
+        raise HTTPException(
+            status_code=400, detail="The uploaded file content is not valid HTML"
+        )
 
     pdf_buffer = BytesIO()
 

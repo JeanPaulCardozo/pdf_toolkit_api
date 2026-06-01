@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
     "fastapi[standard,stantard]>=0.136.1",
     "pypdf>=6.12.1",
     "python-docx>=1.2.0",
