@@ -8,6 +8,7 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "fastapi[standard,stantard]>=0.136.1",
     "pdf2docx>=0.5.13",
+    "pydantic>=2.13.4",
     "pypdf>=6.12.1",
     "python-multipart>=0.0.29",
     "ruff>=0.15.14",

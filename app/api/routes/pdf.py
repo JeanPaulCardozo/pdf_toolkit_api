@@ -1,13 +1,18 @@
-from fastapi import APIRouter, UploadFile, File
+import json
+from fastapi import APIRouter, UploadFile, File, Form
 from app.services.pdf_service import (
     merge_pdfs,
     extract_text_from_pdf,
     split_pdf,
     convert_pdf_to_word,
     convert_html_to_pdf,
+    split_pdf_by_range,
 )
+from app.schemas.pdf_schemas import PageRange
 from typing import Annotated
 from fastapi.responses import Response
+
+from pydantic import TypeAdapter
 
 router = APIRouter(prefix="/pdf", tags=["PDF"])
 
@@ -28,6 +33,26 @@ async def extract_text_from_pdf_file(file: Annotated[UploadFile, File()]):
     extracted_text = await extract_text_from_pdf(file)
 
     return {"status": "success", "extracted_text": extracted_text}
+
+
+@router.post("/split_by_ranges")
+async def split_pdf_file_by_ranges(
+    file: Annotated[UploadFile, File()], ranges: Annotated[str, Form()]
+):
+
+    range_data = json.loads(ranges)
+
+    validate_ranges = TypeAdapter(list[PageRange]).validate_python(range_data)
+
+    split_pdfs = await split_pdf_by_range(file, validate_ranges)
+
+    return Response(
+        content=split_pdfs.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment;filename=split_by_ranges_pdfs.zip",
+        },
+    )
 
 
 @router.post("/split")

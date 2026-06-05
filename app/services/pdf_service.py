@@ -78,6 +78,51 @@ async def extract_text_from_pdf(file: UploadFile) -> str:
     return extracted_text
 
 
+async def split_pdf_by_range(
+    file: UploadFile, ranges: list[tuple[int, int]]
+) -> BytesIO:
+    logger.info(f"Processing file {file.filename}")
+
+    reader, _ = await _get_pdf_reader(file)
+    total_pages = len(reader.pages)
+
+    zip_buffer = BytesIO()
+
+    with ZipFile(zip_buffer, "w") as zip_file:
+        for page_range in ranges:
+            start = page_range.start
+            end = page_range.end
+            if start < 1 or end < 1:
+                raise HTTPException(
+                    status_code=400, detail="Los rangos deben empezar desde la página 1"
+                )
+
+            if start > end:
+                raise HTTPException(
+                    status_code=400, detail=f"Rango inválido: {start}-{end}"
+                )
+
+            if end > total_pages:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El rango {start}-{end} excede el total de páginas: {total_pages}",
+                )
+
+            writer = PdfWriter()
+
+            for page_number in range(start, end + 1):
+                writer.add_page(reader.pages[page_number - 1])
+
+            pdf_buffer = BytesIO()
+            writer.write(pdf_buffer)
+            zip_file.writestr(f"pages_{start}_to_{end}.pdf", pdf_buffer.getvalue())
+
+    zip_buffer.seek(0)
+    logger.info(f"PDF split completed successfully for file: {file.filename}")
+
+    return zip_buffer
+
+
 async def split_pdf(file: UploadFile) -> BytesIO:
     logger.info(f"Processing file: {file.filename}")
 
