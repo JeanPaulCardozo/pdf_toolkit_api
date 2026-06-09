@@ -1,5 +1,7 @@
 import json
-from fastapi import APIRouter, UploadFile, File, Form
+from json import JSONDecodeError
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from app.services.pdf_service import (
     merge_pdfs,
     extract_text_from_pdf,
@@ -12,7 +14,7 @@ from app.schemas.pdf_schemas import PageRange
 from typing import Annotated
 from fastapi.responses import Response
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 router = APIRouter(prefix="/pdf", tags=["PDF"])
 
@@ -40,9 +42,18 @@ async def split_pdf_file_by_ranges(
     file: Annotated[UploadFile, File()], ranges: Annotated[str, Form()]
 ):
 
-    range_data = json.loads(ranges)
+    try:
+        range_data = json.loads(ranges)
+        validate_ranges = TypeAdapter(list[PageRange]).validate_python(range_data)
 
-    validate_ranges = TypeAdapter(list[PageRange]).validate_python(range_data)
+    except JSONDecodeError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid JSON format"
+        )
+
+    except ValidationError  as e:
+        raise HTTPException(status_code=422,detail=e.errors())
 
     split_pdfs = await split_pdf_by_range(file, validate_ranges)
 

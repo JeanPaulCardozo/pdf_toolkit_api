@@ -33,6 +33,15 @@ async def _get_pdf_reader(file: UploadFile) -> tuple[PdfReader, bytes]:
     try:
         reader = PdfReader(pdf_stream)
 
+        if reader.is_encrypted:
+            logger.error(
+                f"Encrypted PDF detected: {file.filename}"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Encrypted PDF files are not supported: {file.filename}"
+            )
+
     except PdfReadError:
         logger.error(f"Invalid PDF detected: {file.filename}")
         raise HTTPException(
