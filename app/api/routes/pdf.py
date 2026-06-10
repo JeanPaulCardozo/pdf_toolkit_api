@@ -47,13 +47,10 @@ async def split_pdf_file_by_ranges(
         validate_ranges = TypeAdapter(list[PageRange]).validate_python(range_data)
 
     except JSONDecodeError:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid JSON format"
-        )
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
 
-    except ValidationError  as e:
-        raise HTTPException(status_code=422,detail=e.errors())
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
 
     split_pdfs = await split_pdf_by_range(file, validate_ranges)
 

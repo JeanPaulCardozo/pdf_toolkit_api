@@ -5,7 +5,7 @@ from fastapi import UploadFile, HTTPException
 from pypdf import PdfWriter, PdfReader
 from pypdf.errors import PdfReadError
 
-from weasyprint import HTML
+from weasyprint import HTML, default_url_fetcher
 
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -20,6 +20,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+_ALLOWED_SCHEMES = {"data"}
+
+
+# Helpers
+def _safe_url_fetcher(url: str):
+    scheme = url.split(":", 1)[0].lower()
+    if scheme not in _ALLOWED_SCHEMES:
+        raise ValueError(f"Blocked external resource: {url}")
+    return default_url_fetcher(url)
+
+
 async def _get_pdf_reader(file: UploadFile) -> tuple[PdfReader, bytes]:
     if file.content_type != "application/pdf":
         logger.error(
@@ -28,18 +39,18 @@ async def _get_pdf_reader(file: UploadFile) -> tuple[PdfReader, bytes]:
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     pdf_bytes = await file.read()
-    pdf_stream = BytesIO(pdf_bytes)
+
+    if not pdf_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=400, detail="File is not a valid PDF")
 
     try:
-        reader = PdfReader(pdf_stream)
+        reader = PdfReader(BytesIO(pdf_bytes))
 
         if reader.is_encrypted:
-            logger.error(
-                f"Encrypted PDF detected: {file.filename}"
-            )
+            logger.error(f"Encrypted PDF detected: {file.filename}")
             raise HTTPException(
                 status_code=400,
-                detail=f"Encrypted PDF files are not supported: {file.filename}"
+                detail=f"Encrypted PDF files are not supported: {file.filename}",
             )
 
     except PdfReadError:
@@ -51,6 +62,7 @@ async def _get_pdf_reader(file: UploadFile) -> tuple[PdfReader, bytes]:
     return reader, pdf_bytes
 
 
+# Functions
 async def merge_pdfs(files: list[UploadFile]) -> BytesIO:
     writer = PdfWriter()
 
@@ -103,18 +115,20 @@ async def split_pdf_by_range(
             end = page_range.end
             if start < 1 or end < 1:
                 raise HTTPException(
-                    status_code=400, detail="Los rangos deben empezar desde la página 1"
+                    status_code=400,
+                    detail="Page ranges must start from page 1",
                 )
 
             if start > end:
                 raise HTTPException(
-                    status_code=400, detail=f"Rango inválido: {start}-{end}"
+                    status_code=400,
+                    detail=f"Invalid range: {start}-{end}",
                 )
 
             if end > total_pages:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"El rango {start}-{end} excede el total de páginas: {total_pages}",
+                    detail=f"Range {start}-{end} exceeds the total number of pages: {total_pages}",
                 )
 
             writer = PdfWriter()
@@ -172,8 +186,13 @@ async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
             pdf_path.write_bytes(pdf_bytes)
 
             converter = Converter(str(pdf_path))
-            converter.convert(str(docx_path))
-            converter.close()
+            try:
+                converter.convert(str(docx_path))
+            except Exception as error:
+                logger.exception("PDF to Word conversion failed")
+                raise HTTPException(status_code=400, detail=str(error))
+            finally:
+                converter.close()
 
             word_buffer = BytesIO(docx_path.read_bytes())
             word_buffer.seek(0)
@@ -182,7 +201,7 @@ async def convert_pdf_to_word(file: UploadFile) -> BytesIO:
         return word_buffer
     except Exception as error:
         logger.error(f"PDF to Word conversion failed: {error}")
-        raise HTTPException(status_code=400, detail=error)
+        raise HTTPException(status_code=400, detail=str(error))
 
 
 async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
@@ -198,7 +217,7 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     try:
         html_content = file_content.decode("utf-8")
-    except:
+    except (UnicodeDecodeError, LookupError):
         logger.error(f"Invalid text encoding for file: {file.filename}")
         raise HTTPException(
             status_code=400, detail="The uploaded file content is not valid HTML"
@@ -216,7 +235,7 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     pdf_buffer = BytesIO()
 
-    HTML(string=html_content).write_pdf(pdf_buffer)
+    HTML(string=html_content, url_fetcher=_safe_url_fetcher).write_pdf(pdf_buffer)
     pdf_buffer.seek(0)
 
     logger.info("HTML to PDF conversion completed successfully")
