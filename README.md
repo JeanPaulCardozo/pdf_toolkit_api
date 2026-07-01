@@ -3,7 +3,7 @@
 # PDF Toolkit API
 
 [![Python](https://img.shields.io/badge/Python-3.14+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.136+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.138+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Pydantic](https://img.shields.io/badge/Pydantic-2.13+-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
 [![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=python&logoColor=white)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64?logo=ruff&logoColor=black)](https://github.com/astral-sh/ruff)
@@ -27,6 +27,7 @@
   - [Tech Stack](#tech-stack)
   - [Requirements](#requirements)
   - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
   - [WeasyPrint Setup on Windows](#weasyprint-setup-on-windows)
   - [Running the Server](#running-the-server)
   - [Project Structure](#project-structure)
@@ -36,6 +37,7 @@
   - [Stack Tecnológico](#stack-tecnológico)
   - [Requisitos](#requisitos)
   - [Instalación](#instalación)
+  - [Variables de Entorno](#variables-de-entorno)
   - [Configuración de WeasyPrint en Windows](#configuración-de-weasyprint-en-windows)
   - [Ejecución del Servidor](#ejecución-del-servidor)
   - [Estructura del Proyecto](#estructura-del-proyecto)
@@ -51,7 +53,7 @@
 
 ### Overview
 
-**PDF Toolkit API** is a lightweight, production-ready REST service that exposes common PDF operations through a clean HTTP interface. It is built on top of [FastAPI](https://fastapi.tiangolo.com/), leveraging asynchronous I/O for high throughput, and uses battle-tested libraries such as `pypdf`, `pdf2docx`, and `WeasyPrint` under the hood.
+**PDF Toolkit API** is a lightweight, production-ready REST service that exposes common PDF operations through a clean HTTP interface. It is built on top of [FastAPI](https://fastapi.tiangolo.com/), leveraging asynchronous I/O for high throughput, and uses battle-tested libraries such as `pypdf`, `pdf2docx`, `PyMuPDF`, and `WeasyPrint` under the hood.
 
 ### Features
 
@@ -61,8 +63,12 @@
 - Split a PDF by user-defined page ranges (returned as a ZIP archive).
 - Convert a PDF document to a Microsoft Word (`.docx`) file.
 - Convert an HTML document to a PDF.
+- Convert a PDF document to Markdown (`.md`).
 - Built-in `/health` endpoint for liveness checks.
 - Automatic interactive documentation via Swagger UI (`/docs`) and ReDoc (`/redoc`).
+- CORS middleware with configurable allowed origins.
+- Upload size limit middleware (configurable, defaults to 20 MB).
+- Security headers middleware (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`).
 
 ### Tech Stack
 
@@ -71,9 +77,12 @@
 | Language | Python 3.14+ |
 | Framework | FastAPI |
 | Validation | Pydantic v2 |
-| PDF I/O | pypdf, pdf2docx |
+| PDF I/O | pypdf, pdf2docx, PyMuPDF |
+| PDF → Markdown | pymupdf4llm |
 | HTML → PDF | WeasyPrint |
 | HTML parsing | BeautifulSoup 4 |
+| Image processing | OpenCV |
+| Testing | pytest, pytest-asyncio, httpx |
 | Tooling | uv, Ruff |
 
 ### Requirements
@@ -96,7 +105,20 @@ uv sync
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
+
+# 3. Configure environment variables (optional)
+cp .env.example .env
 ```
+
+### Environment Variables
+
+The application reads the following variables from the environment (or a `.env` file). All are optional and have sensible defaults.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ENV` | `development` | Set to `production` to disable `/docs`, `/redoc`, and `/openapi.json`. |
+| `MAX_UPLOAD_BYTES` | `20971520` (20 MB) | Maximum allowed request body size in bytes. Requests exceeding this limit receive a `413` response. |
+| `ALLOWED_ORIGINS` | *(empty)* | Comma-separated list of origins allowed by CORS (e.g. `http://localhost:3000,https://example.com`). |
 
 ### WeasyPrint Setup on Windows
 
@@ -162,8 +184,14 @@ pdf_toolkit_api/
 │   ├── services/
 │   │   └── pdf_service.py        # Business logic
 │   └── main.py                   # FastAPI application factory
+├── tests/
+│   ├── conftest.py               # Shared fixtures
+│   ├── test_api_routes.py        # Endpoint integration tests
+│   ├── test_middleware.py         # Middleware tests
+│   └── test_services.py          # Service unit tests
 ├── main.py                       # CLI entry point
 ├── pyproject.toml                # Project metadata & dependencies
+├── .env.example                  # Environment variable template
 └── README.md
 ```
 
@@ -183,8 +211,12 @@ pdf_toolkit_api/
 - Dividir un PDF según rangos de páginas definidos por el usuario (entregado como archivo ZIP).
 - Convertir un documento PDF a un archivo de Microsoft Word (`.docx`).
 - Convertir un documento HTML a PDF.
+- Convertir un documento PDF a Markdown (`.md`).
 - Endpoint `/health` integrado para verificación de disponibilidad.
 - Documentación interactiva automática mediante Swagger UI (`/docs`) y ReDoc (`/redoc`).
+- Middleware CORS con orígenes permitidos configurables.
+- Middleware de límite de tamaño de subida (configurable, 20 MB por defecto).
+- Middleware de encabezados de seguridad (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Strict-Transport-Security`).
 
 ### Stack Tecnológico
 
@@ -193,9 +225,12 @@ pdf_toolkit_api/
 | Lenguaje | Python 3.14+ |
 | Framework | FastAPI |
 | Validación | Pydantic v2 |
-| E/S PDF | pypdf, pdf2docx |
+| E/S PDF | pypdf, pdf2docx, PyMuPDF |
+| PDF → Markdown | pymupdf4llm |
 | HTML → PDF | WeasyPrint |
 | Parseo HTML | BeautifulSoup 4 |
+| Procesamiento de imágenes | OpenCV |
+| Testing | pytest, pytest-asyncio, httpx |
 | Herramientas | uv, Ruff |
 
 ### Requisitos
@@ -218,7 +253,20 @@ uv sync
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
+
+# 3. Configurar variables de entorno (opcional)
+cp .env.example .env
 ```
+
+### Variables de Entorno
+
+La aplicación lee las siguientes variables del entorno (o de un archivo `.env`). Todas son opcionales y tienen valores por defecto razonables.
+
+| Variable | Por defecto | Descripción |
+| --- | --- | --- |
+| `ENV` | `development` | Establecer a `production` para deshabilitar `/docs`, `/redoc` y `/openapi.json`. |
+| `MAX_UPLOAD_BYTES` | `20971520` (20 MB) | Tamaño máximo permitido del cuerpo de la solicitud en bytes. Las solicitudes que excedan este límite reciben una respuesta `413`. |
+| `ALLOWED_ORIGINS` | *(vacío)* | Lista de orígenes permitidos por CORS separados por comas (ej. `http://localhost:3000,https://example.com`). |
 
 ### Configuración de WeasyPrint en Windows
 
@@ -284,8 +332,14 @@ pdf_toolkit_api/
 │   ├── services/
 │   │   └── pdf_service.py        # Lógica de negocio
 │   └── main.py                   # Fábrica de la aplicación FastAPI
+├── tests/
+│   ├── conftest.py               # Fixtures compartidos
+│   ├── test_api_routes.py        # Tests de integración de endpoints
+│   ├── test_middleware.py         # Tests de middleware
+│   └── test_services.py          # Tests unitarios de servicios
 ├── main.py                       # Punto de entrada CLI
 ├── pyproject.toml                # Metadatos y dependencias
+├── .env.example                  # Plantilla de variables de entorno
 └── README.md
 ```
 
@@ -464,6 +518,29 @@ curl -X POST http://localhost:8000/pdf/convert-html-to-pdf \
 
 ---
 
+### `POST /pdf/convert-pdf-to-md`
+
+Convert a PDF document to a Markdown (`.md`) file.
+Convierte un documento PDF a un archivo Markdown (`.md`).
+
+**Request · Solicitud** — `multipart/form-data`
+
+| Field · Campo | Type · Tipo | Required · Requerido | Description · Descripción |
+| --- | --- | --- | --- |
+| `file` | `File` | ✅ | PDF file to convert. · Archivo PDF a convertir. |
+
+**Example · Ejemplo**
+
+```bash
+curl -X POST http://localhost:8000/pdf/convert-pdf-to-md \
+  -F "file=@document.pdf" \
+  -o pdf_to_md_converted.md
+```
+
+**Response · Respuesta** `200 OK` — `text/markdown` (`pdf_to_md_converted.md`).
+
+---
+
 ## Error Handling · Manejo de Errores
 
 The API follows standard HTTP semantics. All errors return a JSON body matching FastAPI's default schema:
@@ -476,12 +553,20 @@ La API sigue la semántica HTTP estándar. Todos los errores devuelven un cuerpo
 | Status | Cause · Causa |
 | --- | --- |
 | `400 Bad Request` | Invalid file type, corrupted PDF, invalid HTML, malformed page ranges, or ranges exceeding the document length. · Tipo de archivo no válido, PDF corrupto, HTML inválido, rangos mal formados o que exceden el total de páginas. |
+| `413 Payload Too Large` | Request body exceeds the `MAX_UPLOAD_BYTES` limit. · El cuerpo de la solicitud excede el límite de `MAX_UPLOAD_BYTES`. |
 | `422 Unprocessable Entity` | Missing or schema-invalid form fields. · Campos del formulario ausentes o que no cumplen el esquema. |
 | `500 Internal Server Error` | Unhandled server-side exception. · Excepción no controlada en el servidor. |
 
 ---
 
 ## Testing
+
+Run the automated test suite with pytest:
+Ejecuta el suite de tests automatizados con pytest:
+
+```bash
+uv run pytest
+```
 
 Run the API locally and exercise the endpoints from the auto-generated Swagger UI at `/docs`, or use `curl`/HTTPie/Postman as shown above.
 Ejecuta la API localmente y prueba los endpoints desde la Swagger UI auto-generada en `/docs`, o usa `curl`/HTTPie/Postman como se muestra arriba.
