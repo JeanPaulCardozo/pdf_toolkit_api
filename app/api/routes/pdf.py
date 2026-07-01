@@ -9,6 +9,7 @@ from app.services.pdf_service import (
     convert_pdf_to_word,
     convert_html_to_pdf,
     split_pdf_by_range,
+    convert_pdf_to_md,
 )
 from app.schemas.pdf_schemas import PageRange
 from typing import Annotated
@@ -96,4 +97,15 @@ async def convert_html_to_pdf_file(file: UploadFile):
         headers={
             "Content-Disposition": "attachment; filename=html_to_pdf_converted.pdf"
         },
+    )
+
+
+@router.post("/convert-pdf-to-md")
+async def convert_pdf_to_md_file(file: UploadFile):
+    md_file = await convert_pdf_to_md(file)
+
+    return Response(
+        content=md_file.getvalue(),
+        media_type="text/markdown",
+        headers={"Content-Disposition": "attachment; filename=pdf_to_md_converted.md"},
     )

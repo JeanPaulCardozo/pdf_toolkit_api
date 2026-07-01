@@ -15,6 +15,9 @@ from zipfile import ZipFile
 
 from bs4 import BeautifulSoup
 
+import pymupdf
+import pymupdf4llm
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -217,7 +220,7 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     try:
         html_content = file_content.decode("utf-8")
-    except (UnicodeDecodeError, LookupError):
+    except UnicodeDecodeError, LookupError:
         logger.error(f"Invalid text encoding for file: {file.filename}")
         raise HTTPException(
             status_code=400, detail="The uploaded file content is not valid HTML"
@@ -240,3 +243,19 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     logger.info("HTML to PDF conversion completed successfully")
     return pdf_buffer
+
+
+async def convert_pdf_to_md(file: UploadFile) -> BytesIO:
+    logger.info("Starting PDF to Markdown conversion")
+    _, pdf_bytes = await _get_pdf_reader(file)
+
+    doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+
+    markdown = pymupdf4llm.to_markdown(doc)
+
+    md_file_buffer = BytesIO(markdown.encode("utf-8"))
+    md_file_buffer.seek(0)
+
+    logger.info("PDF to Markdown conversion completed successfully")
+
+    return md_file_buffer

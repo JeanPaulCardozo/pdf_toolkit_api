@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "beautifulsoup4>=4.14.3",
-    "fastapi[standard,stantard]>=0.136.1",
+    "fastapi[standard]>=0.138.2",
+    "opencv-python>=4.13.0.92",
     "pdf2docx>=0.5.13",
     "pydantic>=2.13.4",
+    "pymupdf4llm>=1.28.0",
     "pypdf>=6.12.1",
     "python-multipart>=0.0.29",
     "ruff>=0.15.14",
