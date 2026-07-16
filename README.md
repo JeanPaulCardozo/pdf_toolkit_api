@@ -106,6 +106,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
+> If you are using PowerShell and activating the virtual environment returns an execution policy error, run:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
+
 # 3. Configure environment variables (optional)
 cp .env.example .env
 ```
@@ -253,6 +258,11 @@ uv sync
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
+
+> Si estás usando PowerShell y al activar el entorno virtual aparece un error de política de ejecución, ejecuta:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+> ```
 
 # 3. Configurar variables de entorno (opcional)
 cp .env.example .env

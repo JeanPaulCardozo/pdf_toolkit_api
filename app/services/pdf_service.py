@@ -220,7 +220,7 @@ async def convert_html_to_pdf(file: UploadFile) -> BytesIO:
 
     try:
         html_content = file_content.decode("utf-8")
-    except UnicodeDecodeError, LookupError:
+    except (UnicodeDecodeError, LookupError):
         logger.error(f"Invalid text encoding for file: {file.filename}")
         raise HTTPException(
             status_code=400, detail="The uploaded file content is not valid HTML"
